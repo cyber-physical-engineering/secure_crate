@@ -1,0 +1,27 @@
+[package]
+name = "ztl-secure"
+version = "0.1.0"
+edition = "2021"
+description = "High-assurance cryptographic engine with AES-256-GCM, P-256, and Strict IV policies."
+authors = ["Big Data Plumbing Engineering <engineering@bigdataplumbing.com>"]
+repository = "https://github.com/BigDataPlumbing/ztl-secure-engine"
+license = "MIT"
+keywords = ["security", "cryptography", "aes-gcm", "zero-trust", "audit"]
+categories = ["cryptography", "authentication"]
+
+# Break out of the parent workspace
+[workspace]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+sha2 = "0.10"
+aes-gcm = "0.10"
+rand = "0.8"
+thiserror = "1.0"
+argon2 = "0.5"
+serde_json = "1.0"
+base64 = "0.21"
+hkdf = "0.12"
+p256 = { version = "0.13", features = ["ecdsa", "pkcs8", "pem"] }
+rand_core = "0.6"
+sec1 = "0.7"
