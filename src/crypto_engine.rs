@@ -1,8 +1,8 @@
+use crate::TrustError;
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use rand::{thread_rng, Rng};
 use std::collections::HashSet;
 use std::sync::Mutex;
-use crate::TrustError;
-use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 /// Cryptographic operations trait
 pub trait CryptoEngine {
@@ -13,7 +13,7 @@ pub trait CryptoEngine {
     fn decrypt(&self, data: &[u8]) -> Result<Vec<u8>, TrustError>;
 }
 
-/// Real AES-256-GCM implementation with HKDF(SHA-384) key derivation support
+/// AES-256-GCM, ECDSA P-256 and SHA-384; the AES key is read or derived with HKDF-SHA384
 pub struct RealCryptoEngine {
     key: [u8; 32],
     strict_iv_policy: bool,
@@ -49,7 +49,11 @@ impl RealCryptoEngine {
         self.encrypt_inner(data, Some(iv))
     }
 
-    fn encrypt_inner(&self, data: &[u8], explicit_iv: Option<[u8; 12]>) -> Result<Vec<u8>, TrustError> {
+    fn encrypt_inner(
+        &self,
+        data: &[u8],
+        explicit_iv: Option<[u8; 12]>,
+    ) -> Result<Vec<u8>, TrustError> {
         use aes_gcm::aead::{Aead, KeyInit};
         use aes_gcm::{Aes256Gcm, Nonce};
 
@@ -122,9 +126,9 @@ impl CryptoEngine for RealCryptoEngine {
         use p256::ecdsa::{Signature as RawSignature, VerifyingKey};
 
         let vk: VerifyingKey = if let Some(v) = &self.verifying_key {
-            v.clone()
+            *v
         } else if let Some(sk) = &self.signing_key {
-            sk.verifying_key().clone()
+            *sk.verifying_key()
         } else {
             return false;
         };
@@ -162,7 +166,7 @@ impl CryptoEngine for RealCryptoEngine {
     }
 }
 
-/// Mock implementation for prototype
+/// Mock engine for tests. Its verify() always returns true.
 pub struct MockCryptoEngine;
 
 impl CryptoEngine for MockCryptoEngine {
@@ -222,7 +226,8 @@ fn load_or_derive_key() -> Result<[u8; 32], TrustError> {
         .ok()
         .or_else(|| env::var("VITE_ENC_KEY_B64").ok());
     if let Some(k) = key_b64 {
-        let raw = STANDARD.decode(k)
+        let raw = STANDARD
+            .decode(k)
             .map_err(|e| TrustError::ConfigError(format!("invalid base64 key: {e}")))?;
         if raw.len() != 32 {
             return Err(TrustError::ConfigError(format!(
@@ -245,7 +250,8 @@ fn load_or_derive_key() -> Result<[u8; 32], TrustError> {
                     .into(),
             )
         })?;
-    let seed = STANDARD.decode(seed_b64)
+    let seed = STANDARD
+        .decode(seed_b64)
         .map_err(|e| TrustError::ConfigError(format!("invalid base64 seed: {e}")))?;
 
     use hkdf::Hkdf;
@@ -259,8 +265,7 @@ fn load_or_derive_key() -> Result<[u8; 32], TrustError> {
     Ok(okm)
 }
 
-fn load_sign_keys_from_env(
-) -> Result<
+fn load_sign_keys_from_env() -> Result<
     (
         Option<p256::ecdsa::SigningKey>,
         Option<p256::ecdsa::VerifyingKey>,
@@ -282,12 +287,13 @@ fn load_sign_keys_from_env(
             Ok(sk) => sk,
             Err(_) => {
                 // Try SEC1 via SecretKey then convert
-                let secret = p256::SecretKey::from_sec1_pem(&pem)
-                    .map_err(|e| TrustError::ConfigError(format!("invalid SEC1 private key PEM: {e}")))?;
+                let secret = p256::SecretKey::from_sec1_pem(&pem).map_err(|e| {
+                    TrustError::ConfigError(format!("invalid SEC1 private key PEM: {e}"))
+                })?;
                 p256::ecdsa::SigningKey::from(secret)
             }
         };
-        verifying_key = Some(sk.verifying_key().clone());
+        verifying_key = Some(*sk.verifying_key());
         signing_key = Some(sk);
     }
 
