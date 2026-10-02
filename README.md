@@ -4,6 +4,8 @@ A small Rust library that puts AES-256-GCM encryption, ECDSA P-256 signatures an
 
 **Status: prototype.** 6 unit tests pass on Rust 1.99 (October 2026). `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` are clean.
 
+[![CI](https://github.com/cyber-physical-engineering/secure_crate/actions/workflows/ci.yml/badge.svg)](https://github.com/cyber-physical-engineering/secure_crate/actions/workflows/ci.yml)
+
 James Thornton set the architecture and requirements. The code was written with AI-assisted development in late 2025. The tests and checks were re-run in October 2026.
 
 ## Where it comes from
