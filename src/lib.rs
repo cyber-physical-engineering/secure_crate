@@ -1,6 +1,5 @@
 pub mod crypto_engine;
 
-
 pub use crypto_engine::*;
 
 /// Error types for the secure engine
@@ -19,11 +18,11 @@ pub enum TrustError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
-    use rand_core::OsRng;
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
     use p256::ecdsa::{SigningKey, VerifyingKey};
     use p256::pkcs8::{EncodePrivateKey, EncodePublicKey, LineEnding};
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
+    use rand_core::OsRng;
+    use std::env;
 
     #[test]
     fn test_mock_crypto_engine_hash() {
@@ -87,10 +86,7 @@ mod tests {
         let ciphertext = engine.encrypt(plaintext).unwrap();
 
         // Format: IV (12) || ciphertext+tag
-        assert!(
-            ciphertext.len() >= 12 + 16,
-            "must contain IV + auth tag"
-        );
+        assert!(ciphertext.len() >= 12 + 16, "must contain IV + auth tag");
         assert_ne!(&ciphertext[12..], plaintext, "ciphertext must differ");
 
         let decrypted = engine.decrypt(&ciphertext).unwrap();
@@ -140,7 +136,7 @@ mod tests {
     fn test_p256_sign_verify_success_and_tamper() {
         // Generate a fresh keypair and export to PEM envs
         let sk = SigningKey::random(&mut OsRng);
-        let vk: VerifyingKey = sk.verifying_key().clone();
+        let vk: VerifyingKey = *sk.verifying_key();
 
         // Export as PKCS#8 and SPKI PEM
         let priv_pem = sk
